@@ -36,7 +36,7 @@ namespace Shadowrun_Launcher
 
         private void PlayButton_Click(object sender, System.EventArgs e)
         {
-            if (File.Exists(gameExe))
+            if (File.Exists(gameExe) && Status == LauncherStatus.ready)
             {
                 ProcessStartInfo startInfo = new ProcessStartInfo(gameExe)
                 {
@@ -46,16 +46,21 @@ namespace Shadowrun_Launcher
 
                 Close();
             }
-            else
+            else if (Status == LauncherStatus.download)
             {
                 CheckForUpdates();
             }
+            /*else
+            {
+                CheckForUpdates();
+            }*/
         }
         private void CheckForUpdates()
         {
             if (File.Exists(localVersionFile))
             {
                 Version localVersion = new Version(File.ReadAllText(localVersionFile));
+                VersionText.Text = localVersion.ToString();
                 try
                 {
                     WebClient webClient = new WebClient();
@@ -65,15 +70,21 @@ namespace Shadowrun_Launcher
                     {
                         InstallGameFiles(true, onlineVersion);
                     }
+                    else
+                    {
+                        Status = LauncherStatus.ready;
+                    }
                 }
                 catch (Exception ex)
                 {
+                    Status = LauncherStatus.failed;
                     MessageBox.Show($"Error checking for game updates: {ex}");
                 }
             }
             else
             {
-                InstallGameFiles(false, Version.zero);
+                Status = LauncherStatus.download;
+                //InstallGameFiles(false, Version.zero);
             }
         }
 
@@ -84,6 +95,11 @@ namespace Shadowrun_Launcher
                 WebClient webClient = new WebClient();
                 if (!_isUpdate)
                 {
+                    Status = LauncherStatus.downloadingUpdate;
+                }
+                else
+                {
+                    Status = LauncherStatus.downloadingGame;
                     _onlineVersion = new Version(webClient.DownloadString(onlineVersionFile));
                 }
                 webClient.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadGameCompletedCallback);
@@ -101,20 +117,25 @@ namespace Shadowrun_Launcher
             try
             {
                 string onlineVersion = ((Version)e.UserState).ToString();
-                ZipFile.ExtractToDirectory(gameZip, releaseFilesPath);
+                //ZipFile.ExtractToDirectory(gameZip, releaseFilesPath);
+                ZipArchiveExtensions.ExtractToDirectory(sourceDirectoryName: gameZip, destinationDirectoryName: releaseFilesPath, overwrite: true);
                 File.Delete(gameZip);
 
                 File.WriteAllText(Path.Combine(releaseFilesPath, versionFileName), onlineVersion);
+
+                VersionText.Text = onlineVersion;
+                Status = LauncherStatus.ready;
             }
             catch (Exception ex)
             {
+                Status = LauncherStatus.failed;
                 MessageBox.Show($"Error finishing download: {ex}");
             }
         }
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            //CheckForUpdates();
+            CheckForUpdates();
         }
         internal LauncherStatus Status
         {
@@ -126,6 +147,9 @@ namespace Shadowrun_Launcher
                 {
                     case LauncherStatus.ready:
                         button1.Text = "Play";
+                        break;
+                    case LauncherStatus.download:
+                        button1.Text = "Download";
                         break;
                     case LauncherStatus.failed:
                         button1.Text = "Update Failed - Retry";
@@ -145,7 +169,7 @@ namespace Shadowrun_Launcher
 
     enum LauncherStatus
     {
-        ready, failed, downloadingGame, downloadingUpdate
+        ready, download, failed, downloadingGame, downloadingUpdate
     }
 
     struct Version
