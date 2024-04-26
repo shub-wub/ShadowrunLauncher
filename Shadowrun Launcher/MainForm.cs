@@ -13,7 +13,7 @@ namespace Shadowrun_Launcher
         private string rootPath;
         private string onlineBuildZip = @"C:\Users\sfish\OneDrive\Desktop\build\build.zip";
         private string onlineVersionFile = @"C:\Users\sfish\OneDrive\Desktop\build\version.txt";
-        private string releasefolderName = "release";
+        private string releasefolderName = "shadowrun";
         private string gameZipFileName = "build.zip";
         private string versionFileName = "version.txt";
         private string gameExeFileName = "Shadowrun.exe";
