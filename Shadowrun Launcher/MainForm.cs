@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
+using System.Windows;
 using System.Windows.Forms;
 
 namespace Shadowrun_Launcher
@@ -12,15 +14,21 @@ namespace Shadowrun_Launcher
     {
         private string rootPath;
         private string onlineBuildZip = @"C:\Users\sfish\OneDrive\Desktop\build\build.zip";
+        private string onlineGfwlZip = @"C:\Users\sfish\OneDrive\Desktop\build\gfwlivesetup.zip";
         private string onlineVersionFile = @"C:\Users\sfish\OneDrive\Desktop\build\version.txt";
+        private string gfwlProgramFileExe = @"C:\Program Files (x86)\Microsoft Games for Windows - LIVE\Client\GFWLive.exe";
         private string releasefolderName = "shadowrun";
         private string gameZipFileName = "build.zip";
+        private string gfwlZipFileName = "gfwlivesetup.zip";
         private string versionFileName = "version.txt";
         private string gameExeFileName = "Shadowrun.exe";
+        private string gfwlExeFileName = "gfwlivesetup.exe";
 
         private string releaseFilesPath;
         private string gameZip;
+        private string gfwlZip;
         private string gameExe;
+        private string gfwlExe;
         private string localVersionFile;
         private LauncherStatus _status;
 
@@ -30,8 +38,15 @@ namespace Shadowrun_Launcher
             rootPath = Directory.GetCurrentDirectory();
             releaseFilesPath = Path.Combine(rootPath, releasefolderName);
             gameZip = Path.Combine(rootPath, gameZipFileName);
+            gfwlZip = Path.Combine(rootPath, gfwlZipFileName);
             gameExe = Path.Combine(releaseFilesPath, gameExeFileName);
+            gfwlExe = Path.Combine(releaseFilesPath, gfwlExeFileName);
             localVersionFile = Path.Combine(releaseFilesPath, versionFileName);
+        }
+
+        private void MainForm_Load(object sender, EventArgs e)
+        {
+            CheckForUpdates();
         }
 
         private void PlayButton_Click(object sender, System.EventArgs e)
@@ -59,12 +74,12 @@ namespace Shadowrun_Launcher
         {
             if (File.Exists(localVersionFile))
             {
-                Version localVersion = new Version(File.ReadAllText(localVersionFile));
+                GameVersion localVersion = new GameVersion(File.ReadAllText(localVersionFile));
                 VersionText.Text = localVersion.ToString();
                 try
                 {
                     WebClient webClient = new WebClient();
-                    Version onlineVersion = new Version(webClient.DownloadString(onlineVersionFile));
+                    GameVersion onlineVersion = new GameVersion(webClient.DownloadString(onlineVersionFile));
 
                     if (onlineVersion.IsDifferentThan(localVersion))
                     {
@@ -78,8 +93,13 @@ namespace Shadowrun_Launcher
                 catch (Exception ex)
                 {
                     Status = LauncherStatus.failed;
-                    MessageBox.Show($"Error checking for game updates: {ex}");
+                    System.Windows.Forms.MessageBox.Show($"Error checking for game updates: {ex}");
                 }
+            }
+            else if (Status == LauncherStatus.download)
+            {
+                Status = LauncherStatus.download;
+                InstallGameFiles(false, GameVersion.zero);
             }
             else
             {
@@ -88,11 +108,12 @@ namespace Shadowrun_Launcher
             }
         }
 
-        private void InstallGameFiles(bool _isUpdate, Version _onlineVersion)
+        private void InstallGameFiles(bool _isUpdate, GameVersion _onlineVersion)
         {
             try
             {
-                WebClient webClient = new WebClient();
+                WebClient webClientGame = new WebClient();
+                WebClient webClientGfwl = new WebClient();
                 if (!_isUpdate)
                 {
                     Status = LauncherStatus.downloadingUpdate;
@@ -100,15 +121,63 @@ namespace Shadowrun_Launcher
                 else
                 {
                     Status = LauncherStatus.downloadingGame;
-                    _onlineVersion = new Version(webClient.DownloadString(onlineVersionFile));
+                    _onlineVersion = new GameVersion(webClientGame.DownloadString(onlineVersionFile));
                 }
-                webClient.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadGameCompletedCallback);
-                webClient.DownloadFileAsync(new Uri(onlineBuildZip), gameZip, _onlineVersion);
+                webClientGame.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadGameCompletedCallback);
+                webClientGame.DownloadFileAsync(new Uri(onlineBuildZip), gameZip, _onlineVersion);
+
+                // if the user doesn't already have gfwl install it
+                if (File.Exists(gfwlProgramFileExe) == false)
+                {
+                    webClientGfwl.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadGfwlCompletedCallback);
+                    webClientGfwl.DownloadFileAsync(new Uri(onlineGfwlZip), gfwlZip);
+                }
+                webClientGfwl.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadGfwlCompletedCallback);
+                webClientGfwl.DownloadFileAsync(new Uri(onlineGfwlZip), gfwlZip);
             }
             catch (Exception ex)
             {
                 Status = LauncherStatus.failed;
-                MessageBox.Show($"Error installing game files: {ex}");
+                System.Windows.Forms.MessageBox.Show($"Error installing game files: {ex}");
+            }
+        }
+        private void DownloadGfwlCompletedCallback(object sender, AsyncCompletedEventArgs e)
+        {
+            try
+            {
+                ZipArchiveExtensions.ExtractToDirectory(sourceDirectoryName: gfwlZip, destinationDirectoryName: releaseFilesPath, overwrite: true);
+                File.Delete(gfwlZip);
+
+                Console.WriteLine($"Attempting to run: {gfwlExe}");
+
+                if (Directory.Exists(releaseFilesPath))
+                {
+                    if (File.Exists(gfwlExe))
+                    {
+                        ProcessStartInfo startInfo = new ProcessStartInfo(gfwlExe);
+                        startInfo.Verb = "runas"; // Run as administrator
+                        Process gfwlProcess = Process.Start(startInfo);
+
+                        // Wait for the process to finish
+                        gfwlProcess.WaitForExit();
+
+                        // Close the process
+                        gfwlProcess.Close();
+                    }
+                    else
+                    {
+                        System.Windows.Forms.MessageBox.Show("GFWL exe not found in releases directory", "Warning", MessageBoxButtons.OK);
+                    }
+                }
+                else
+                {
+                    System.Windows.Forms.MessageBox.Show("Your game is not installed", "Warning", MessageBoxButtons.OK);
+                }
+            }
+            catch (Exception ex)
+            {
+                Status = LauncherStatus.failed;
+                System.Windows.Forms.MessageBox.Show($"Error finishing GFWL download: {ex}");
             }
         }
         private void DownloadGameCompletedCallback(object sender, AsyncCompletedEventArgs e)
@@ -116,8 +185,7 @@ namespace Shadowrun_Launcher
 
             try
             {
-                string onlineVersion = ((Version)e.UserState).ToString();
-                //ZipFile.ExtractToDirectory(gameZip, releaseFilesPath);
+                string onlineVersion = ((GameVersion)e.UserState).ToString();
                 ZipArchiveExtensions.ExtractToDirectory(sourceDirectoryName: gameZip, destinationDirectoryName: releaseFilesPath, overwrite: true);
                 File.Delete(gameZip);
 
@@ -129,14 +197,10 @@ namespace Shadowrun_Launcher
             catch (Exception ex)
             {
                 Status = LauncherStatus.failed;
-                MessageBox.Show($"Error finishing download: {ex}");
+                System.Windows.Forms.MessageBox.Show($"Error finishing game download: {ex}");
             }
         }
 
-        private void MainForm_Load(object sender, EventArgs e)
-        {
-            CheckForUpdates();
-        }
         internal LauncherStatus Status
         {
             get => _status;
@@ -172,21 +236,21 @@ namespace Shadowrun_Launcher
         ready, download, failed, downloadingGame, downloadingUpdate
     }
 
-    struct Version
+    struct GameVersion
     {
-        internal static Version zero = new Version(0, 0, 0);
+        internal static GameVersion zero = new GameVersion(0, 0, 0);
 
         private short major;
         private short minor;
         private short subMinor;
 
-        internal Version(short _major, short _minor, short _subMinor)
+        internal GameVersion(short _major, short _minor, short _subMinor)
         {
             major = _major;
             minor = _minor;
             subMinor = _subMinor;
         }
-        internal Version(string _version)
+        internal GameVersion(string _version)
         {
             string[] versionStrings = _version.Split('.');
             if (versionStrings.Length != 3)
@@ -202,7 +266,7 @@ namespace Shadowrun_Launcher
             subMinor = short.Parse(versionStrings[2]);
         }
 
-        internal bool IsDifferentThan(Version _otherVersion)
+        internal bool IsDifferentThan(GameVersion _otherVersion)
         {
             if (major != _otherVersion.major)
             {
