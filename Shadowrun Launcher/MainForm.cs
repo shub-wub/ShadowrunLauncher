@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -16,10 +17,12 @@ namespace Shadowrun_Launcher
         private string onlineBuildZip = @"C:\Users\sfish\OneDrive\Desktop\build\build.zip";
         private string onlineGfwlZip = @"C:\Users\sfish\OneDrive\Desktop\build\gfwlivesetup.zip";
         private string onlineVersionFile = @"C:\Users\sfish\OneDrive\Desktop\build\version.txt";
+        private string directXInstall = @"https://download.microsoft.com/download/1/7/1/1718CCC4-6315-4D8E-9543-8E28A4E18C4C/dxwebsetup.exe";
         private string gfwlProgramFileExe = @"C:\Program Files (x86)\Microsoft Games for Windows - LIVE\Client\GFWLive.exe";
         private string releasefolderName = "shadowrun";
         private string gameZipFileName = "build.zip";
         private string gfwlZipFileName = "gfwlivesetup.zip";
+        private string directXInstallFileName = "dxwebsetup.exe";
         private string versionFileName = "version.txt";
         private string gameExeFileName = "Shadowrun.exe";
         private string gfwlExeFileName = "gfwlivesetup.exe";
@@ -29,6 +32,7 @@ namespace Shadowrun_Launcher
         private string gfwlZip;
         private string gameExe;
         private string gfwlExe;
+        private string directXExe;
         private string localVersionFile;
         private LauncherStatus _status;
 
@@ -41,6 +45,7 @@ namespace Shadowrun_Launcher
             gfwlZip = Path.Combine(rootPath, gfwlZipFileName);
             gameExe = Path.Combine(releaseFilesPath, gameExeFileName);
             gfwlExe = Path.Combine(releaseFilesPath, gfwlExeFileName);
+            directXExe = Path.Combine(releaseFilesPath, directXInstallFileName);
             localVersionFile = Path.Combine(releaseFilesPath, versionFileName);
         }
 
@@ -114,6 +119,7 @@ namespace Shadowrun_Launcher
             {
                 WebClient webClientGame = new WebClient();
                 WebClient webClientGfwl = new WebClient();
+                WebClient webClientDirectX = new WebClient();
                 if (!_isUpdate)
                 {
                     Status = LauncherStatus.downloadingUpdate;
@@ -132,13 +138,55 @@ namespace Shadowrun_Launcher
                     webClientGfwl.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadGfwlCompletedCallback);
                     webClientGfwl.DownloadFileAsync(new Uri(onlineGfwlZip), gfwlZip);
                 }
-                webClientGfwl.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadGfwlCompletedCallback);
-                webClientGfwl.DownloadFileAsync(new Uri(onlineGfwlZip), gfwlZip);
+
+                if(!IsDirectX9Installed())
+                {
+                    webClientDirectX.DownloadFileCompleted += new AsyncCompletedEventHandler(DownloadDirectXCompletedCallback);
+                    webClientDirectX.DownloadFileAsync(new Uri(directXInstall), directXInstallFileName);
+                }
             }
             catch (Exception ex)
             {
                 Status = LauncherStatus.failed;
                 System.Windows.Forms.MessageBox.Show($"Error installing game files: {ex}");
+            }
+        }
+        private void DownloadDirectXCompletedCallback(object sender, AsyncCompletedEventArgs e)
+        {
+            try
+            {
+                Console.WriteLine($"Attempting to run: {directXInstallFileName}");
+
+                if (Directory.Exists(releaseFilesPath))
+                {
+                    if (File.Exists(directXExe))
+                    {
+                        ProcessStartInfo startInfo = new ProcessStartInfo(directXExe);
+                        startInfo.Verb = "runas"; // Run as administrator
+                        Process directxProcess = Process.Start(startInfo);
+
+                        // Wait for the process to finish
+                        directxProcess.WaitForExit();
+
+                        // Close the process
+                        directxProcess.Close();
+                    }
+                    else
+                    {
+                        Status = LauncherStatus.failed;
+                        System.Windows.Forms.MessageBox.Show("DirectX exe not found in releases directory", "Warning", MessageBoxButtons.OK);
+                    }
+                }
+                else
+                {
+                    Status = LauncherStatus.failed;
+                    System.Windows.Forms.MessageBox.Show("Your game is not installed", "Warning", MessageBoxButtons.OK);
+                }
+            }
+            catch (Exception ex)
+            {
+                Status = LauncherStatus.failed;
+                System.Windows.Forms.MessageBox.Show($"Error finishing DirectX download: {ex}");
             }
         }
         private void DownloadGfwlCompletedCallback(object sender, AsyncCompletedEventArgs e)
@@ -166,11 +214,13 @@ namespace Shadowrun_Launcher
                     }
                     else
                     {
+                        Status = LauncherStatus.failed;
                         System.Windows.Forms.MessageBox.Show("GFWL exe not found in releases directory", "Warning", MessageBoxButtons.OK);
                     }
                 }
                 else
                 {
+                    Status = LauncherStatus.failed;
                     System.Windows.Forms.MessageBox.Show("Your game is not installed", "Warning", MessageBoxButtons.OK);
                 }
             }
@@ -199,6 +249,32 @@ namespace Shadowrun_Launcher
                 Status = LauncherStatus.failed;
                 System.Windows.Forms.MessageBox.Show($"Error finishing game download: {ex}");
             }
+        }
+
+        public static bool IsDirectX9Installed()
+        {
+            string system32Directory = Path.Combine(Environment.GetEnvironmentVariable("WINDIR"), "System32");
+            bool foundD3dx9 = false;
+            bool foundD3d9 = false;
+
+            foreach (string filename in Directory.GetFiles(system32Directory, "*.dll"))
+            {
+                string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filename);
+                if (fileNameWithoutExtension.StartsWith("d3dx9_", StringComparison.OrdinalIgnoreCase))
+                {
+                    foundD3dx9 = true;
+                }
+                else if (fileNameWithoutExtension.Equals("d3d9", StringComparison.OrdinalIgnoreCase))
+                {
+                    foundD3d9 = true;
+                }
+
+                if (foundD3dx9 && foundD3d9)
+                {
+                    return true; // Both DirectX 9 DLLs found
+                }
+            }
+            return false; // Either or both DLLs are missing
         }
 
         internal LauncherStatus Status
