@@ -305,6 +305,12 @@ namespace Shadowrun_Launcher
                 }
             }
         }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            KeyDisplay display = new KeyDisplay("CMCY6-TPV4Y-4HYWP-Q2TFJ-R8BW3", true);
+            display.ShowDialog();
+        }
     }
 
     enum LauncherStatus

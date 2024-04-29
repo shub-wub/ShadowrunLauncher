@@ -172,11 +172,50 @@ namespace Shadowrun_Launcher
             }
         }
 
-        public void DisplayKey(string key)
+        public void DisplayKey(string key = "GWQJH-FF3YX-D2FBT-9TQF4-BPK97")
         {
-            // TODO Display the key to the user
+            KeyDisplay display = new KeyDisplay(key);
+            display.ShowDialog();
         }
+        public void ForceCloseGame()
+        {
+            string path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            path = Path.Combine(path, @"Microsoft\Xlive\Titles\4d5307d6");
+            string tokenFile = Path.Combine(path, "Token.bin");
 
+            if (File.Exists(tokenFile))
+            {
+                // Check if Shadowrun.exe is running
+                Process[] processes = Process.GetProcessesByName("Shadowrun");
+                if (processes.Length > 0)
+                {
+                    // If Shadowrun.exe is running, force close it
+                    foreach (Process process in processes)
+                    {
+                        process.Kill();
+                        Console.WriteLine("Shadowrun.exe has been terminated.");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Shadowrun.exe is not running.");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Token.bin does not exist.");
+            }
+        }
+        public void DeleteToken()
+        {
+            string path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            path = System.IO.Path.Combine(path, @"Microsoft\Xlive\Titles\4d5307d6");
+            string TokenFile = path + "\\Token.bin";
+            if (File.Exists(TokenFile))
+            {
+                File.Delete(TokenFile);
+            }
+        }
         private string[] SplitIntoChunks(string str, int chunkSize)
         {
             int numChunks = (int)Math.Ceiling((double)str.Length / chunkSize);
