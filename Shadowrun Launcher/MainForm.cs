@@ -58,13 +58,30 @@ namespace Shadowrun_Launcher
         {
             if (File.Exists(gameExe) && Status == LauncherStatus.ready)
             {
-                ProcessStartInfo startInfo = new ProcessStartInfo(gameExe)
+                try
                 {
-                    WorkingDirectory = releaseFilesPath
-                };
-                Process.Start(startInfo);
+                    // For PCID Change
+                    string srPcidBackupValue = Helper.GetSrPcidBackupFromRegistry();
+                    if (!string.IsNullOrEmpty(srPcidBackupValue))
+                    {
+                        string uawPcidHex = Helper.DecimalToHexFormat(int.Parse(srPcidBackupValue));
+                        Console.WriteLine($"UAWPCIDBACKUP from registry (decimal): {srPcidBackupValue}");
+                        Console.WriteLine($"UAWPCIDBACKUP from registry (hex format): {uawPcidHex}");
+                        Helper.SetPcidInRegistry(srPcidBackupValue);
+                        Helper.DeleteSrPcidBackupFromRegistry();
+                    }
+                    ProcessStartInfo startInfo = new ProcessStartInfo(gameExe)
+                    {
+                        WorkingDirectory = releaseFilesPath
+                    };
+                    Process.Start(startInfo);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Exception occurred: {ex}");
+                }
 
-                Close();
+                //Close();
             }
             else if (Status == LauncherStatus.download)
             {
