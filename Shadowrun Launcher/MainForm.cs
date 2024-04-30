@@ -1,4 +1,5 @@
 ﻿using Microsoft.Win32;
+using Shadowrun_Launcher.Logic;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -7,6 +8,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Windows;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace Shadowrun_Launcher
@@ -36,6 +38,7 @@ namespace Shadowrun_Launcher
         private string localVersionFile;
         private LauncherStatus _status;
 
+        private System.Drawing.Point offset;
         public MainForm()
         {
             InitializeComponent();
@@ -47,6 +50,34 @@ namespace Shadowrun_Launcher
             gfwlExe = Path.Combine(releaseFilesPath, gfwlExeFileName);
             directXExe = Path.Combine(releaseFilesPath, directXInstallFileName);
             localVersionFile = Path.Combine(releaseFilesPath, versionFileName);
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.MouseDown += CustomWindow_MouseDown;
+            this.MouseMove += CustomWindow_MouseMove;
+            this.MouseUp += CustomWindow_MouseUp;
+        }
+
+        private void CustomWindow_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                offset = e.Location;
+            }
+        }
+
+        private void CustomWindow_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                this.Location = new System.Drawing.Point(this.Left + e.X - offset.X, this.Top + e.Y - offset.Y);
+            }
+        }
+
+        private void CustomWindow_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                offset = System.Drawing.Point.Empty;
+            }
         }
 
         private void MainForm_Load(object sender, EventArgs e)
@@ -61,14 +92,14 @@ namespace Shadowrun_Launcher
                 try
                 {
                     // For PCID Change
-                    string srPcidBackupValue = Helper.GetSrPcidBackupFromRegistry();
+                    string srPcidBackupValue = RegistryLogic.GetSrPcidBackupFromRegistry();
                     if (!string.IsNullOrEmpty(srPcidBackupValue))
                     {
-                        string uawPcidHex = Helper.DecimalToHexFormat(int.Parse(srPcidBackupValue));
+                        string uawPcidHex = HelperMethods.DecimalToHexFormat(int.Parse(srPcidBackupValue));
                         Console.WriteLine($"UAWPCIDBACKUP from registry (decimal): {srPcidBackupValue}");
                         Console.WriteLine($"UAWPCIDBACKUP from registry (hex format): {uawPcidHex}");
-                        Helper.SetPcidInRegistry(srPcidBackupValue);
-                        Helper.DeleteSrPcidBackupFromRegistry();
+                        RegistryLogic.SetPcidInRegistry(srPcidBackupValue);
+                        RegistryLogic.DeleteSrPcidBackupFromRegistry();
                     }
                     ProcessStartInfo startInfo = new ProcessStartInfo(gameExe)
                     {

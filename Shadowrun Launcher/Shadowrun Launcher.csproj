@@ -59,13 +59,16 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Logic\GenerateKeyButton.cs" />
+    <Compile Include="Logic\HelperMethods.cs" />
+    <Compile Include="Logic\PlayButton.cs" />
     <Compile Include="KeyDisplay.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="KeyDisplay.Designer.cs">
       <DependentUpon>KeyDisplay.cs</DependentUpon>
     </Compile>
-    <Compile Include="KeyHelper.cs" />
+    <Compile Include="Logic\RegistryLogic.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>

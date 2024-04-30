@@ -1,111 +1,23 @@
-﻿using Microsoft.Win32;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
+using System.Windows.Forms;
 
-namespace Shadowrun_Launcher
+namespace Shadowrun_Launcher.Logic
 {
-    internal class KeyHelper
+    internal class GenerateKeyLogic
     {
-        public void CopyToClipboard(string text)
-        {
-            try
-            {
-                Clipboard.Clear(); // Clear existing clipboard content
-                Clipboard.SetText(text); // Set new text to clipboard
-                                         // No need for 'this.Update()' as there's no equivalent in WPF for this specific update
-            }
-            catch (Exception)
-            {
-                MessageBox.Show("Failed to copy to clipboard.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private bool CheckPcidInRegistry()
-        {
-            try
-            {
-                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Classes\SOFTWARE\Microsoft\XLive", false))
-                {
-                    if (key != null)
-                    {
-                        object pcidValue = key.GetValue("PCID");
-                        return pcidValue != null;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Error accessing registry: {e}");
-            }
-            return false;
-        }
-
-        private string GetPcidFromRegistry()
-        {
-            try
-            {
-                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Classes\SOFTWARE\Microsoft\XLive", false))
-                {
-                    if (key != null)
-                    {
-                        object pcidValue = key.GetValue("PCID");
-                        return pcidValue?.ToString();
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Error accessing registry: {e}");
-            }
-            return null;
-        }
-
-        private string DecimalToHexFormat(int decimalValue)
-        {
-            string hexValue = decimalValue.ToString("X"); // Convert to hex
-            char[] hexChars = hexValue.ToCharArray(); // Convert to char array
-            Array.Reverse(hexChars); // Reverse the array
-
-            string reversedHex = new string(hexChars); // Convert back to string
-            string formattedHex = string.Join(",", SplitIntoChunks(reversedHex, 2)); // Group into pairs and join with commas
-
-            return formattedHex;
-        }
-
-        private bool SrPcidChangeExists()
-        {
-            try
-            {
-                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Classes\SOFTWARE\Microsoft\XLive", false))
-                {
-                    if (key != null)
-                    {
-                        object srPcidBackup = key.GetValue("SRPCIDBACKUP");
-                        return srPcidBackup != null;
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                // If an exception occurs, it means the key does not exist
-            }
-            return false;
-        }
-
         public void GenerateKey()
         {
             // Fetch and print PCID from the registry at the beginning of the GenerateKey method
-            string pcidDecimal = GetPcidFromRegistry();
+            string pcidDecimal = RegistryLogic.GetPcidFromRegistry();
             if (!string.IsNullOrEmpty(pcidDecimal))
             {
-                string pcid2 = DecimalToHexFormat(int.Parse(pcidDecimal));
+                string pcid2 = HelperMethods.DecimalToHexFormat(int.Parse(pcidDecimal));
                 Console.WriteLine($"PCID from registry (decimal): {pcidDecimal}");
                 Console.WriteLine($"PCID from registry (hex format): {pcid2}");
             }
@@ -115,11 +27,18 @@ namespace Shadowrun_Launcher
             }
 
             // Check for the existence of the PCID in the Windows Registry
-            if (!CheckPcidInRegistry())
+            if (!RegistryLogic.CheckPcidInRegistry())
             {
-                Console.WriteLine("You have not created a PCID yet. To create one, you must launch the game and then exit it.");
-                // Add your logic for launching the game here if needed
-                return;
+                DialogResult response = System.Windows.Forms.MessageBox.Show("You have not created a PCID yet. To create one, you must launch the game and then exit it. Would you like to launch the game?", "Notification", MessageBoxButtons.YesNo);
+
+                if (response == DialogResult.Yes) // If the user clicked "Yes"
+                {
+                    //MainForm.PlayButton_Click()
+                }
+                else
+                {
+                    // TODO
+                }
             }
 
             // Replace the following lines with your actual key generation logic
@@ -134,11 +53,11 @@ namespace Shadowrun_Launcher
             // Move the widgets to the desired location (Assuming equivalent UI elements)
             DisplayKey(key);
             // Copy the key to the clipboard
-            CopyToClipboard(key);
+            HelperMethods.CopyToClipboard(key);
 
             // Write registry modifications to a .reg file
             string registryModificationContent;
-            if (SrPcidChangeExists())
+            if (RegistryLogic.SrPcidChangeExists())
             {
                 Console.WriteLine("IT IS HERE");
                 registryModificationContent = $"Windows Registry Editor Version 5.00\n\n[HKEY_CURRENT_USER\\Software\\Classes\\SOFTWARE\\Microsoft\\XLive]\n\"PCID\"=hex(b):{pcid}";
@@ -147,7 +66,7 @@ namespace Shadowrun_Launcher
             {
                 Console.WriteLine("IT IS NOT HERE");
                 string pcid2 = ""; // Replace this with your actual PCID2 generation logic
-                registryModificationContent = $"Windows Registry Editor Version 5.00\n\n[HKEY_CURRENT_USER\\Software\\Classes\\SOFTWARE\\Microsoft\\XLive]\n\"PCID\"=hex(b):{pcid}\n\"UAWPCIDBACKUP\"=hex(b):{pcid2}";
+                registryModificationContent = $"Windows Registry Editor Version 5.00\n\n[HKEY_CURRENT_USER\\Software\\Classes\\SOFTWARE\\Microsoft\\XLive]\n\"PCID\"=hex(b):{pcid}\n\"SRPCIDBACKUP\"=hex(b):{pcid2}";
             }
 
             // Write registry modification content to .reg file
@@ -171,41 +90,6 @@ namespace Shadowrun_Launcher
                 }
             }
         }
-
-        public void DisplayKey(string key = "GWQJH-FF3YX-D2FBT-9TQF4-BPK97")
-        {
-            KeyDisplay display = new KeyDisplay(key);
-            display.ShowDialog();
-        }
-        public void ForceCloseGame()
-        {
-            string path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            path = Path.Combine(path, @"Microsoft\Xlive\Titles\4d5307d6");
-            string tokenFile = Path.Combine(path, "Token.bin");
-
-            if (File.Exists(tokenFile))
-            {
-                // Check if Shadowrun.exe is running
-                Process[] processes = Process.GetProcessesByName("Shadowrun");
-                if (processes.Length > 0)
-                {
-                    // If Shadowrun.exe is running, force close it
-                    foreach (Process process in processes)
-                    {
-                        process.Kill();
-                        Console.WriteLine("Shadowrun.exe has been terminated.");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Shadowrun.exe is not running.");
-                }
-            }
-            else
-            {
-                Console.WriteLine("Token.bin does not exist.");
-            }
-        }
         public void DeleteToken()
         {
             string path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -216,19 +100,10 @@ namespace Shadowrun_Launcher
                 File.Delete(TokenFile);
             }
         }
-        private string[] SplitIntoChunks(string str, int chunkSize)
+        public void DisplayKey(string key = "GWQJH-FF3YX-D2FBT-9TQF4-BPK97")
         {
-            int numChunks = (int)Math.Ceiling((double)str.Length / chunkSize);
-            string[] chunks = new string[numChunks];
-
-            for (int i = 0; i < numChunks; i++)
-            {
-                int startIndex = i * chunkSize;
-                int length = Math.Min(chunkSize, str.Length - startIndex);
-                chunks[i] = str.Substring(startIndex, length);
-            }
-
-            return chunks;
+            KeyDisplay display = new KeyDisplay(key);
+            display.ShowDialog();
         }
 
         private List<KeyData> data = new List<KeyData>
@@ -275,12 +150,9 @@ namespace Shadowrun_Launcher
             return data[index]; // Return the KeyData object at the random index
         }
     }
-
     public class KeyData
     {
         public string Pcid { get; set; }
         public string Key { get; set; }
     }
-
-
 }
