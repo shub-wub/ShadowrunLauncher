@@ -61,6 +61,7 @@
   <ItemGroup>
     <Compile Include="Logic\GenerateKeyButton.cs" />
     <Compile Include="Logic\HelperMethods.cs" />
+    <Compile Include="Logic\ImageRotator.cs" />
     <Compile Include="Logic\PlayButton.cs" />
     <Compile Include="KeyDisplay.cs">
       <SubType>Form</SubType>

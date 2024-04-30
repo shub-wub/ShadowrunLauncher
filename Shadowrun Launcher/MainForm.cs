@@ -10,6 +10,8 @@ using System.Net;
 using System.Windows;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Drawing.Imaging;
+using System.Linq;
 
 namespace Shadowrun_Launcher
 {
@@ -83,6 +85,11 @@ namespace Shadowrun_Launcher
         private void MainForm_Load(object sender, EventArgs e)
         {
             CheckForUpdates();
+            ImageRotator imageRotator1 = new ImageRotator(pictureBox1, 2);
+            ImageRotator imageRotator2 = new ImageRotator(pictureBox2, 3);
+            ImageRotator imageRotator3 = new ImageRotator(pictureBox3, 1);
+            ImageRotator imageRotator4 = new ImageRotator(pictureBox4, 4);
+            ImageRotator imageRotator5 = new ImageRotator(pictureBox5, 5);
         }
 
         private void PlayButton_Click(object sender, System.EventArgs e)
