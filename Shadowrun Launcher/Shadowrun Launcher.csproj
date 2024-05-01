@@ -84,6 +84,7 @@
     </EmbeddedResource>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -93,6 +94,7 @@
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
     </Compile>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
@@ -107,6 +109,21 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Images\BackgroundImage.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Images\circle_02.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Images\circle_03.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Images\circle_04.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Images\circle_05.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
